@@ -1,0 +1,272 @@
+---
+title: "BTMA 531 Assignment 2"
+author: "Lan Dawei Y. Mouland"
+date: "2023-02-07"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Question 1: 
+
+
+Question 1a: 
+
+some of the follow code references this website:
+1. https://stackoverflow.com/questions/8273313/sample-random-rows-in-dataframe
+```{r}
+if(!(require(data.table))){install.packages('data.table')}
+if(!(require(dplyr))){install.packages('dplyr')}
+if(!(require(ggplot2))){install.packages('ggplot2')}
+library(data.table)
+library(dplyr)
+library(ggplot2)
+
+
+
+ether = read.csv("/Users/daweimouland/UNI/UNI W23/BTMA 531/HW 2/transaction_dataset.csv") %>% as.data.frame()
+
+ether1FLAG = ether #made a mistake earier this is just to save time on work. :) 
+##### inputs#######
+set.seed(1)
+ #removing the index as to not use it as a factor
+ether1FLAG.train = ether1FLAG[sample(nrow(ether1FLAG), 2000, replace = FALSE),-1] #training set ref 1.
+ether1FLAG.test = ether1FLAG[-sample(nrow(ether1FLAG), 2000, replace = FALSE), -1]
+##########
+eth.train.log = glm(FLAG ~., family = binomial, data = ether1FLAG.train) #period selects all data points minus flag 
+
+summary(eth.train.log)
+```
+question 1b: 
+
+```{r}
+set.seed(1)
+pred_data_r = predict(eth.train.log,ether1FLAG.test, type = "response")
+pred_2 = rep(0,nrow(ether1FLAG.test))
+pred_2[pred_data_r > 0.5] = 1 #assign 1 or 0 based on response. 
+#ether1FLAG.test[is.na(ether1FLAG.test$PRED),] = 0 #replaces the NA values IF THERE ARE ANY
+table(pred_2) #shows prediction's classification 
+
+mean(ether1FLAG.test$FLAG==pred_2)
+```
+answer 1b: correctly predicted flagging _____% of the time 
+
+question 1c:
+```{r}
+cm = table(pred_2,ether1FLAG.test$FLAG)
+cm
+
+t1e = cm[2, 1] / (cm[2, 1] + cm[2, 2]) #type 1 error 
+t1e
+
+t2e = cm[1, 2] / (cm[1, 1] + cm[1,2]) #type 2 error 
+t2e
+
+
+```
+answer 1d: type 1____ & type 2____
+
+question 1d: There are many false positives, many false negatives, or our prediction method is too lenient and would produce more false negatives. To improve the performance of our model we can consider taking factors out such as __________. This could help improve the accuracy, furthermore we may choose to change the model to a quadratic or otherwise to improve the R^2 score. Based on the actual amount of flags to the predicted amount of flags there are a few scenarios likely taking place. 
+We can decrease the threshhold to decrease the number of type 1 errors. 
+
+Question 2
+
+Question 2a
+```{r}
+if(!(require(MASS))){install.packages('MASS')}
+library(MASS)
+
+accent = read.csv("/Users/daweimouland/UNI/UNI W23/BTMA 531/HW 2/accent-mfcc-data-1.csv") %>% as.data.frame() #I started using FREAD later on because it was easier. I did not need to set my WD 
+set.seed(1)
+accent.train = accent[sample(nrow(accent), 250, replace = FALSE),] #training set. selecting 250 random observations 
+accent.test = accent[-sample(nrow(accent), 250, replace = FALSE),] #test set. selecting everything besides the 250 previous 
+
+accent.lda = lda(language ~., data = accent.train)
+accent.lda
+```
+
+question 2b and 2c: 
+```{r}
+set.seed(1)
+accent.lda.pred = predict(accent.lda, accent.test) #2b
+mean(accent.lda.pred$class==accent.test$language) #2c
+
+x = table(accent.lda.pred$class, accent.test$language)
+
+```
+answer 2b and 2c: Predicts the speaker's native language 82.28% of the time 
+
+question 2d: 
+```{r}
+set.seed(1)
+accent.train = accent[sample(nrow(accent), 250, replace = FALSE),] #training set. selecting 250 random observations 
+accent.test = accent[-sample(nrow(accent), 250, replace = FALSE),] #test set. selecting everything besides the 250 previous 
+accent.qda = qda(language~., data = accent.train) #creating the QDA regression 
+
+accent.qda #results of the regression 
+
+```
+question 2e and 2f:
+```{r}
+set.seed(1)
+accent.qda.pred = predict(accent.qda, accent.test) #predicting the remainder of the dataset using the accent.test subset
+mean(accent.qda.pred$class == accent.test$language) #average success at guessing native language of a speaker. 
+
+table(accent.qda.pred$class,accent.test$language)
+```
+answer 2e and 2f: There is a 88.61% chance that a QDA model will predict the native language of the speaker. 
+```{r}
+mean(accent.qda.pred$class == accent.test$language) - mean(accent.lda.pred$class==accent.test$language) #difference between QDA and LDA model. 
+```
+answer 2f cont.: There is a 6.33% difference between the QDA and LDA model. One explianation as to why the QDA is higher than the LDA is that the datapoints' relations can be better explained by a quadratic model opposed to a linear one. However given big-o notation QDA models can take longer if the data set is large. The model could be improved if the training set is expanded to avoid overfitting. 
+##DOUBLE CHECK. 
+
+question 2g: 
+```{r}
+if(!(require(class))){install.packages('class')}
+library(class)
+set.seed(1)
+accent.train.in = accent[sample(nrow(accent), 250, replace = FALSE),-1] #training set. selecting 250 random observations 
+accent.test.in = accent[-sample(nrow(accent), 250, replace = FALSE),-1] #test set. selecting everything besides the 250 previous 
+accent.train.out = accent[sample(nrow(accent), 250, replace = FALSE),1] #training set. selecting 250 random observations 
+accent.test.out = accent[-sample(nrow(accent), 250, replace = FALSE),1] #test set. selecting everything besides the 250 previous 
+accent.train.in.SC = scale(accent.train.in) #scaling the training set.
+
+means = attr(accent.train.in.SC, "scaled:center") #retain mean from training set
+sds = attr(accent.train.in.SC, "scaled:scale")#retain sds from training set
+
+
+accent.test.in.SC = scale(accent.test.in, center = means, scale = sds)
+
+#KNN prediction with k = 5
+accent.knn.5 = knn(accent.train.in.SC, accent.test.in.SC, accent.train.out, k = 5)
+table(accent.knn.5)
+mean(accent.knn.5 == accent.test.out)
+#KNN prediction with k = 10
+accent.knn.10 = knn(accent.train.in.SC, accent.test.in.SC, accent.train.out, k = 10)
+table(accent.knn.10)
+mean(accent.knn.10 == accent.test.out)
+```
+answer 2g: When k = 5 there is a 35.44% accuracy, while when k = 10 it is 46.84%. Overall there seems to be a positive correlation between an increasing k value and the accuracy at which it predicts, however, is likely resulting in false classifications. 
+
+
+question 3
+
+question 3a:
+```{R}
+CarEvals = fread("CarEvals.csv")
+if(!(require(tree))){install.packages('tree')}
+library(tree)
+
+attach(CarEvals)
+set.seed(1)
+Car.tree = tree(as.factor(Class) ~ as.factor(Buying) + as.factor(Maintenance) + 
+                  as.factor(Doors) + as.factor(Persons) + as.factor(Boot) + as.factor(Safety), data = CarEvals)
+#Car.tree = tree(as.factor(Class) ~., data = CarEvals) 
+#note that making the others factors and just selecting the data gave two different results. 
+#check question 1 and 2 for that error. 
+summary(Car.tree)
+```
+question 3b and 3c:
+```{R}
+set.seed(1)
+car.train = CarEvals[sample(nrow(CarEvals), 1000, replace = FALSE),]
+car.test = CarEvals[-sample(nrow(CarEvals), 1000, replace = FALSE),]
+
+car.tree.train = tree(as.factor(Class) ~ as.factor(Buying) + as.factor(Maintenance) + 
+                        as.factor(Doors) + as.factor(Persons) + as.factor(Boot) + as.factor(Safety), data = CarEvals)
+
+car.pred = predict(car.tree.train, car.test, type = 'class')
+mean(car.pred == car.test$Class) #prediction accuracy 
+table(car.pred, car.test$Class) #confusion matrix
+
+```
+answer 3b and 3c: 94.44% accurate at predicting. 
+
+question 3d:
+```{r}
+set.seed(1)
+car.tree.train.cv = cv.tree(car.tree.train, FUN = prune.misclass)
+names(car.tree.train.cv)
+car.tree.train.cv
+
+par(mfrow = c(1,2))
+plot(car.tree.train.cv$size, car.tree.train.cv$dev, type = "b")
+plot(car.tree.train.cv$size, car.tree.train.cv$k, type = "b")
+```
+answer 3d: The best tree size is 13
+
+
+question 3d:
+```{r}
+car.prune = prune.misclass(car.tree.train, best = 13)
+car.prune.pred = predict(car.prune, car.test, type = "class")
+mean(car.prune.pred == car.test$Class)
+
+```
+answer 3d: With pruning the tree's accuracy is at 93.60%
+
+Question 4:
+
+Question 4a: 
+```{r}
+if(!(require(data.table))){install.packages('data.table')}
+library(data.table)
+AQdataFULL = na.omit(fread("AirQualityUCI.csv")) #removing NAs
+```
+
+Question 4b:
+Answer 4b:
+There are issues with removing Nas in this dataset.The df contains data that shows the concentration of gases (I think) in the air. Na in this case is not detected, so removing rows that contain NAs is removing valid data points that could improve accuracy. Therefore, it would be my recommendation to make NAs zero instead.
+
+referenced the following site to get true hourly average
+Question 4c:
+```{r}
+if(!(require(tidyverse))){install.packages('tidyverse')}
+library(tidyverse)
+if(!(require(ggplot2))){install.packages('ggplot2')}
+library(ggplot2)
+if(!(require(dplyr))){install.packages('dplyr')}
+library(dplyr)
+
+#not sure which is right but for now will keep both :) 
+
+##Subset for the hourly average 
+Aba = AQdataFULL[,2:3]
+test = Aba %>% group_by(Time) %>% summarize(CO = mean(`CO(GT)`)) %>% as.data.frame()
+par(mfrow=c(1,3))
+ggplot(test, aes(x = Time, y = CO)) + geom_point() #Seq plot
+lag.plot(test$CO, main = "lag plot") #lag plot
+hist(test$CO, xlab = "CO", ylab = "frequency") #hist plot
+
+#Done with just AQdataFUll 
+par(mfrow=c(1,3))
+ggplot(Aba, aes(x = Time, y = `CO(GT)`)) + geom_boxplot() #best choice for the data since the black bar shows the mean 
+ggplot(Aba, aes(x = Time, y = `CO(GT)`)) + geom_point()#Seq plot, would be better with box plots to show 
+lag.plot(Aba$`CO(GT)`, main = "lag plot")
+hist(Aba$`CO(GT)`, xlab = "CO", ylab = "frequency", main = "Histogram: Frequency of CO")
+
+```
+
+Question 4d:
+```{r}
+qqnorm(test$CO)
+qqline(test$CO)
+```
+Question 4d: Most of the data fits on the qq line, meaning that the theoretical quantiles and sample quantiles are quite similar. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
